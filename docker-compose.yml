@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  autori_dmp:
+    build: .
+    image: api-node-app
+    ports:
+      - '1319:3000'
+    networks:
+      - node-network
+
+networks:
+  node-network:
+    driver: bridge

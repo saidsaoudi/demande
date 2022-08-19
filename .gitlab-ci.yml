@@ -1,0 +1,40 @@
+stages:
+  - deploy_dev
+  - deploy_preprod
+
+image: ubuntu:18.04 
+before_script:
+     - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client git -y )'
+     - eval $(ssh-agent -s)
+     - echo "$ID_RSA" | tr -d '\r' | ssh-add -
+     - mkdir -p ~/.ssh
+     - chmod 700 ~/.ssh
+     - apt update && apt install -y rsync
+
+deploy_dev_env:
+  stage: deploy_dev
+  script:
+     - cp .env.example .env
+     - rsync -e "ssh -o StrictHostKeyChecking=no" -atv --delete --progress --exclude={.gitlab-ci.yml,README.md} ./ root@$DEV_SERVER:/home/dmp-projects/autorisation-api/
+     - ssh -o StrictHostKeyChecking=no root@$DEV_SERVER "docker-compose -f /home/dmp-projects/autorisation-api/docker-compose.yml up -d --build"
+  tags:
+     - cicd-runner
+  environment:
+     name: dev
+     url: https://api-autorisation.dmp.devcorp.fr/
+  only:
+    - develop
+
+
+deploy_preprod_env:
+  stage: deploy_preprod
+  script:
+     -  cp .env.preprod .env
+     - rsync -e "ssh -o StrictHostKeyChecking=no" -atv --delete --progress --exclude={.gitlab-ci.yml,README.md} ./ dmp@$PREPROD_SERVER:/home/dmp/autorisation-api/
+     - ssh -o StrictHostKeyChecking=no dmp@$PREPROD_SERVER "sudo docker-compose -f /home/dmp/autorisation-api/docker-compose.yml up -d --build"
+  tags:
+     - cicd-runner
+  environment:
+     name: preprod
+  only:
+    - master
